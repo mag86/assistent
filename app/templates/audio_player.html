@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Audio Response</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 20px auto;
+            padding: 0 20px;
+        }
+        .response-container {
+            background-color: #f5f5f5;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+        .audio-container {
+            margin-top: 20px;
+        }
+        audio {
+            width: 100%;
+        }
+    </style>
+</head>
+<body>
+    <div class="response-container">
+        <h3>Ответ:</h3>
+        <p>{{ answer }}</p>
+    </div>
+    <div class="audio-container">
+        <h3>Аудио версия:</h3>
+        <audio controls autoplay>
+            <source src="{{ audio_url }}" type="audio/mpeg">
+            Ваш браузер не поддерживает аудио элемент.
+        </audio>
+    </div>
+</body>
+</html> 

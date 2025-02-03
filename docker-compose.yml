@@ -1,0 +1,12 @@
+services:
+  web:
+    build: .
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./models:/app/models
+      - ./data:/app/data
+      - ./data/audio:/app/data/audio
+      - ./app/templates:/app/templates
+    environment:
+      - MODEL_PATH=/app/models/mistral-7b-instruct-v0.2.Q4_K_M.gguf

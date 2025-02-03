@@ -8,6 +8,8 @@ sentence-transformers>=2.2.2
 python-multipart>=0.0.5
 llama-cpp-python>=0.2.6
 faiss-cpu
+gtts>=2.3.1
+jinja2>=2.11.2
 --find-links https://download.pytorch.org/whl/torch_stable.html
 torch
 chromadb --no-deps

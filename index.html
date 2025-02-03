@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>AI Assistant</title>
+    <style>
+        :root {
+            --fb-blue: #1877f2;
+            --fb-hover-blue: #166fe5;
+            --fb-gray: #f0f2f5;
+            --fb-text: #1c1e21;
+        }
+
+        body {
+            font-family: SFProDisplay-Regular, Helvetica, Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: var(--fb-gray);
+            color: var(--fb-text);
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 20px auto;
+            padding: 20px;
+        }
+
+        .card {
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+            color: var(--fb-text);
+        }
+
+        textarea, select, input[type="number"] {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #dddfe2;
+            border-radius: 6px;
+            font-size: 16px;
+            margin-bottom: 10px;
+            box-sizing: border-box;
+        }
+
+        .checkbox-group {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        button {
+            background-color: var(--fb-blue);
+            border: none;
+            border-radius: 6px;
+            color: white;
+            padding: 12px 20px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            width: 100%;
+            transition: background-color 0.3s;
+        }
+
+        button:hover {
+            background-color: var(--fb-hover-blue);
+        }
+
+        .response-container {
+            display: none;
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            padding: 20px;
+            margin-top: 20px;
+        }
+
+        .response-text {
+            white-space: pre-wrap;
+            line-height: 1.5;
+            color: var(--fb-text);
+        }
+
+        audio {
+            width: 100%;
+            margin-top: 15px;
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 20px;
+        }
+
+        .loading::after {
+            content: "Думаю...";
+            animation: dots 1.5s infinite;
+        }
+
+        @keyframes dots {
+            0%, 20% { content: "Думаю."; }
+            40% { content: "Думаю.."; }
+            60%, 100% { content: "Думаю..."; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="card">
+            <form id="questionForm">
+                <div class="form-group">
+                    <label for="question">Ваш вопрос:</label>
+                    <textarea id="question" rows="4" required></textarea>
+                </div>
+
+                <div class="form-group">
+                    <label for="model">Модель:</label>
+                    <select id="model" required>
+                        <option value="local-llm">Local LLM</option>
+                        <option value="gpt-3.5-turbo">GPT-3.5 Turbo</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="temperature">Температура (0.0 - 1.0):</label>
+                    <input type="number" id="temperature" min="0" max="1" step="0.1" value="0.7" required>
+                </div>
+
+                <div class="form-group checkbox-group">
+                    <input type="checkbox" id="needAudio">
+                    <label for="needAudio">Озвучить ответ</label>
+                </div>
+
+                <div class="form-group">
+                    <label for="lang">Язык озвучки:</label>
+                    <select id="lang">
+                        <option value="ru">Русский</option>
+                        <option value="en">English</option>
+                    </select>
+                </div>
+
+                <button type="submit">Отправить</button>
+            </form>
+        </div>
+
+        <div class="loading"></div>
+
+        <div class="response-container">
+            <div class="response-text"></div>
+            <audio controls style="display: none;">
+                <source type="audio/mpeg">
+                Your browser does not support the audio element.
+            </audio>
+        </div>
+    </div>
+
+    <script>
+        document.getElementById('questionForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const loading = document.querySelector('.loading');
+            const responseContainer = document.querySelector('.response-container');
+            const responseText = document.querySelector('.response-text');
+            const audioPlayer = document.querySelector('audio');
+            
+            // Показываем индикатор загрузки
+            loading.style.display = 'block';
+            responseContainer.style.display = 'none';
+            
+            const requestData = {
+                text: document.getElementById('question').value,
+                model_name: document.getElementById('model').value,
+                temperature: parseFloat(document.getElementById('temperature').value),
+                need_audio: document.getElementById('needAudio').checked,
+                lang: document.getElementById('lang').value
+            };
+
+            try {
+                const response = await fetch('/ask', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': 'Basic ' + btoa('admin:secret')
+                    },
+                    body: JSON.stringify(requestData)
+                });
+
+                if (!response.ok) {
+                    throw new Error('Network response was not ok');
+                }
+
+                const contentType = response.headers.get('content-type');
+                
+                if (contentType && contentType.includes('text/html')) {
+                    // Если ответ в формате HTML (с аудио)
+                    const html = await response.text();
+                    const parser = new DOMParser();
+                    const doc = parser.parseFromString(html, 'text/html');
+                    
+                    // Извлекаем текст ответа и URL аудио
+                    const answer = doc.querySelector('.response-container p').textContent;
+                    const audioUrl = doc.querySelector('audio source').src;
+                    
+                    responseText.textContent = answer;
+                    audioPlayer.src = audioUrl;
+                    audioPlayer.style.display = 'block';
+                    
+                } else {
+                    // Если ответ в формате JSON
+                    const data = await response.json();
+                    responseText.textContent = data.answer;
+                    audioPlayer.style.display = 'none';
+                }
+                
+                // Скрываем индикатор загрузки и показываем ответ
+                loading.style.display = 'none';
+                responseContainer.style.display = 'block';
+                
+                // Воспроизводим аудио, если оно есть
+                if (audioPlayer.src && requestData.need_audio) {
+                    audioPlayer.play();
+                }
+
+            } catch (error) {
+                console.error('Error:', error);
+                responseText.textContent = 'Произошла ошибка при получении ответа.';
+                loading.style.display = 'none';
+                responseContainer.style.display = 'block';
+                audioPlayer.style.display = 'none';
+            }
+        });
+    </script>
+</body>
+</html>
